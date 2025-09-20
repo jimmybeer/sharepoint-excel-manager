@@ -1,15 +1,28 @@
 """
 GUI implementation using Toga for SharePoint Excel Manager
 """
-import toga
-from toga.style.pack import COLUMN, ROW, Pack
 import json
 import os
 from pathlib import Path
+
+import toga
+from toga.style.pack import COLUMN, ROW, Pack
+
 from .sharepoint_client import SharePointClient
 
 
 class SharePointExcelApp(toga.App):
+    
+    def __init__(self):
+        super().__init__(
+            formal_name="SharePoint Excel Manager",
+            app_id="com.example.sharepoint_excel_manager",
+            app_name="SharePoint Excel Manager",
+            description="A GUI application for managing Excel files in SharePoint",
+            author="Your Name",
+            version="1.0.0"
+        )
+    
     def startup(self):
         """Initialize the application"""
         self.sharepoint_client = SharePointClient()
