@@ -48,9 +48,12 @@ Thumbs.db
 
 # Project specific
 config.json
+settings.json
+settings.json.backup
 *.log
 temp/
 cache/
+examples/example_settings_export.json
 
 # Credentials
 .env

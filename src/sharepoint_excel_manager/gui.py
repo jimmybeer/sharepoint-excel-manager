@@ -1,13 +1,10 @@
 """
 GUI implementation using Toga for SharePoint Excel Manager
 """
-import json
-import os
-from pathlib import Path
-
 import toga
 from toga.style.pack import COLUMN, ROW, Pack
 
+from .settings import SettingsManager
 from .sharepoint_client import SharePointClient
 
 
@@ -26,10 +23,9 @@ class SharePointExcelApp(toga.App):
     def startup(self):
         """Initialize the application"""
         self.sharepoint_client = SharePointClient()
-        self.config_file = Path.home() / ".sharepoint_excel_config.json"
         
-        # Load saved configuration
-        self.config = self.load_config()
+        # Initialize settings manager
+        self.settings_manager = SettingsManager()
         
         # Main container
         main_box = toga.Box(style=Pack(direction=COLUMN, padding=20))
@@ -43,15 +39,17 @@ class SharePointExcelApp(toga.App):
         # Team URL input
         url_label = toga.Label("Team SharePoint URL:", style=Pack(padding=(0, 0, 5, 0)))
         self.url_input = toga.TextInput(
-            value=self.config.get("team_url", ""),
-            style=Pack(width=400, padding=(0, 0, 10, 0))
+            value=self.settings_manager.get("team_url", ""),
+            style=Pack(width=400, padding=(0, 0, 10, 0)),
+            on_change=self.on_url_change
         )
         
         # Document folder input
         folder_label = toga.Label("Document Folder Path:", style=Pack(padding=(0, 0, 5, 0)))
         self.folder_input = toga.TextInput(
-            value=self.config.get("document_folder", ""),
-            style=Pack(width=400, padding=(0, 0, 10, 0))
+            value=self.settings_manager.get("document_folder", ""),
+            style=Pack(width=400, padding=(0, 0, 10, 0)),
+            on_change=self.on_folder_change
         )
         
         # Buttons container
@@ -78,6 +76,13 @@ class SharePointExcelApp(toga.App):
             style=Pack(padding=(0, 10, 0, 0), width=120)
         )
         
+        # Settings button
+        settings_button = toga.Button(
+            "Settings",
+            on_press=self.show_settings,
+            style=Pack(padding=(0, 10, 0, 0), width=120)
+        )
+        
         # Status label
         self.status_label = toga.Label(
             "Ready",
@@ -93,6 +98,7 @@ class SharePointExcelApp(toga.App):
         button_box.add(test_button)
         button_box.add(save_button)
         button_box.add(browse_button)
+        button_box.add(settings_button)
         
         main_box.add(title)
         main_box.add(url_label)
@@ -107,29 +113,101 @@ class SharePointExcelApp(toga.App):
         self.main_window = toga.MainWindow(title=self.formal_name)
         self.main_window.content = main_box
         self.main_window.show()
+        
+        # Load window size and position from settings
+        self._restore_window_state()
     
-    def load_config(self):
-        """Load configuration from file"""
+    def _restore_window_state(self):
+        """Restore window size and position from settings"""
+        settings = self.settings_manager.settings
+        
+        # Set window size
+        if settings.window_width and settings.window_height:
+            try:
+                self.main_window.size = (settings.window_width, settings.window_height)
+            except Exception:
+                pass  # Ignore if setting size fails
+        
+        # Set window position (if available and valid)
+        if settings.window_x is not None and settings.window_y is not None:
+            try:
+                self.main_window.position = (settings.window_x, settings.window_y)
+            except Exception:
+                pass  # Ignore if setting position fails
+    
+    def _save_window_state(self):
+        """Save current window state to settings"""
         try:
-            if self.config_file.exists():
-                with open(self.config_file, 'r') as f:
-                    return json.load(f)
-        except Exception as e:
-            print(f"Error loading config: {e}")
-        return {}
+            size = self.main_window.size
+            position = self.main_window.position
+            
+            self.settings_manager.update(
+                window_width=size[0],
+                window_height=size[1],
+                window_x=position[0],
+                window_y=position[1]
+            )
+        except Exception:
+            pass  # Ignore if getting window state fails
+    
+    def on_exit(self):
+        """Called when the application is closing"""
+        # Save window state
+        self._save_window_state()
+        
+        # Save current settings
+        self.settings_manager.save()
+        
+        return True
+    
+    def on_url_change(self, widget):
+        """Handle URL input changes"""
+        self.settings_manager.set("team_url", widget.value.strip())
+    
+    def on_folder_change(self, widget):
+        """Handle folder input changes"""
+        self.settings_manager.set("document_folder", widget.value.strip())
+    
+    async def show_settings(self, widget):
+        """Show settings dialog"""
+        settings = self.settings_manager.settings
+        
+        # Create a simple info dialog for now
+        # In a full implementation, this could be a proper settings window
+        info_text = f"""Current Settings:
+        
+Team URL: {settings.team_url or 'Not set'}
+Document Folder: {settings.document_folder or 'Not set'}
+Window Size: {settings.window_width}x{settings.window_height}
+Auto Connect: {'Yes' if settings.auto_connect else 'No'}
+Remember Credentials: {'Yes' if settings.remember_credentials else 'No'}
+Theme: {settings.theme}
+
+Settings are automatically saved when changed.
+Configuration file location: {self.settings_manager._config_file}"""
+        
+        await self.main_window.info_dialog("Settings", info_text)
     
     async def save_config(self, widget):
         """Save current configuration"""
-        config = {
-            "team_url": self.url_input.value,
-            "document_folder": self.folder_input.value
-        }
+        team_url = self.url_input.value.strip()
+        document_folder = self.folder_input.value.strip()
         
         try:
-            with open(self.config_file, 'w') as f:
-                json.dump(config, f, indent=2)
-            self.status_label.text = "Configuration saved successfully"
-            self.status_label.style.color = "green"
+            # Update settings
+            self.settings_manager.update(
+                team_url=team_url,
+                document_folder=document_folder
+            )
+            
+            # Save to file
+            if self.settings_manager.save():
+                self.status_label.text = "Configuration saved successfully"
+                self.status_label.style.color = "green"
+            else:
+                self.status_label.text = "Error saving configuration"
+                self.status_label.style.color = "red"
+                
         except Exception as e:
             self.status_label.text = f"Error saving config: {str(e)}"
             self.status_label.style.color = "red"
