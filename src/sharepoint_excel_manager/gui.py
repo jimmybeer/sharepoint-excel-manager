@@ -83,6 +83,13 @@ class SharePointExcelApp(toga.App):
             style=Pack(padding=(0, 10, 0, 0), width=120)
         )
         
+        # Device auth button (alternative for strict environments)
+        device_auth_button = toga.Button(
+            "Device Auth",
+            on_press=self.device_auth_connection,
+            style=Pack(padding=(0, 10, 0, 0), width=120)
+        )
+        
         # Status label
         self.status_label = toga.Label(
             "Ready",
@@ -99,6 +106,7 @@ class SharePointExcelApp(toga.App):
         button_box.add(save_button)
         button_box.add(browse_button)
         button_box.add(settings_button)
+        button_box.add(device_auth_button)
         
         main_box.add(title)
         main_box.add(url_label)
@@ -188,6 +196,51 @@ Configuration file location: {self.settings_manager._config_file}"""
         
         await self.main_window.info_dialog("Settings", info_text)
     
+    async def device_auth_connection(self, widget):
+        """Test connection using device code authentication (for strict environments)"""
+        team_url = self.url_input.value.strip()
+        folder_path = self.folder_input.value.strip()
+        
+        if not team_url:
+            self.status_label.text = "Please enter a team URL"
+            self.status_label.style.color = "red"
+            return
+        
+        # Show instructions to user
+        await self.main_window.info_dialog(
+            "Device Code Authentication",
+            "This method will display a code that you need to enter on a separate device or browser.\n\n" +
+            "This is useful in environments with strict security policies.\n\n" +
+            "Click OK to continue, then check the console for instructions."
+        )
+        
+        self.status_label.text = "Starting device authentication - check console for code..."
+        self.status_label.style.color = "orange"
+        
+        try:
+            success = await self.sharepoint_client.authenticate_device_code(team_url)
+            if success:
+                # Test the connection after authentication
+                connection_success = await self.sharepoint_client.test_connection(team_url, folder_path)
+                if connection_success:
+                    self.status_label.text = "Device authentication and connection successful!"
+                    self.status_label.style.color = "green"
+                    
+                    # Auto-save successful connection settings
+                    self.settings_manager.update(
+                        team_url=team_url,
+                        document_folder=folder_path
+                    )
+                else:
+                    self.status_label.text = "Authentication succeeded but connection test failed"
+                    self.status_label.style.color = "orange"
+            else:
+                self.status_label.text = "Device authentication failed"
+                self.status_label.style.color = "red"
+        except Exception as e:
+            self.status_label.text = f"Device auth error: {str(e)[:50]}..."
+            self.status_label.style.color = "red"
+    
     async def save_config(self, widget):
         """Save current configuration"""
         team_url = self.url_input.value.strip()
@@ -222,7 +275,7 @@ Configuration file location: {self.settings_manager._config_file}"""
             self.status_label.style.color = "red"
             return
         
-        self.status_label.text = "Testing connection..."
+        self.status_label.text = "Testing connection - authentication may open browser..."
         self.status_label.style.color = "orange"
         
         try:
@@ -230,11 +283,23 @@ Configuration file location: {self.settings_manager._config_file}"""
             if success:
                 self.status_label.text = "Connection successful!"
                 self.status_label.style.color = "green"
+                
+                # Auto-save successful connection settings
+                self.settings_manager.update(
+                    team_url=team_url,
+                    document_folder=folder_path
+                )
             else:
-                self.status_label.text = "Connection failed - check credentials"
+                self.status_label.text = "Connection failed - check URL and try again"
                 self.status_label.style.color = "red"
         except Exception as e:
-            self.status_label.text = f"Connection error: {str(e)}"
+            error_msg = str(e)
+            if "AADSTS53003" in error_msg:
+                self.status_label.text = "Connection blocked by Conditional Access - contact IT admin"
+            elif "AADSTS50058" in error_msg:
+                self.status_label.text = "Silent sign-in failed - please try again"
+            else:
+                self.status_label.text = f"Connection error: {error_msg[:50]}..."
             self.status_label.style.color = "red"
     
     async def browse_files(self, widget):

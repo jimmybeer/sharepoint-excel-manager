@@ -1,83 +1,141 @@
-SharePoint Excel Manager
+# SharePoint Excel Manager
+
 A cross-platform GUI application built with Python and Toga for managing Excel files stored in Microsoft Teams SharePoint sites.
 
-Features
-🖥️ Cross-platform GUI (Windows, macOS, Linux)
-🔗 Connect to Teams SharePoint sites
-📊 Browse and manage Excel files
-💾 Download and upload Excel files
-⚙️ Persistent settings storage with auto-save
-🪟 Window state preservation (size and position)
-🔒 Secure authentication
-📁 Recent connections management
-Prerequisites
-Python 3.8 or higher
-Microsoft 365 account with access to Teams SharePoint
-Git (for development)
-Quick Start
-Windows
-Clone the repository:
-cmd
+## Features
+
+- 🖥️ Cross-platform GUI (Windows, macOS, Linux)
+- 🔗 Connect to Teams SharePoint sites
+- 📊 Browse and manage Excel files
+- 💾 Download and upload Excel files
+- ⚙️ Persistent settings storage with auto-save
+- 🪟 Window state preservation (size and position)
+- 🔒 Secure authentication
+- 📁 Recent connections management
+
+## Prerequisites
+
+- Python 3.8 or higher
+- Microsoft 365 account with access to Teams SharePoint
+- Git (for development)
+
+## Quick Start
+
+### Windows
+
+1. Clone the repository:
+   ```cmd
    git clone <your-repo-url>
    cd sharepoint-excel-manager
-Run the installation script:
-cmd
+   ```
+
+2. Run the installation script:
+   ```cmd
    scripts\install_windows.bat
-Start the application:
-cmd
+   ```
+
+3. Start the application:
+   ```cmd
    scripts\run_windows.bat
-macOS
-Clone the repository:
-bash
+   ```
+
+### macOS
+
+1. Clone the repository:
+   ```bash
    git clone <your-repo-url>
    cd sharepoint-excel-manager
-Make the installation script executable and run it:
-bash
+   ```
+
+2. Make the installation script executable and run it:
+   ```bash
    chmod +x scripts/install_macos.sh
    ./scripts/install_macos.sh
-Start the application:
-bash
+   ```
+
+3. Start the application:
+   ```bash
    ./scripts/run_macos.sh
-Manual Installation
+   ```
+
+## Manual Installation
+
 If you prefer to install manually:
 
-Create a virtual environment:
-bash
+1. Create a virtual environment:
+   ```bash
    python -m venv venv
-Activate the virtual environment:
-Windows: venv\Scripts\activate.bat
-macOS/Linux: source venv/bin/activate
-Install the project:
-bash
+   ```
+
+2. Activate the virtual environment:
+   - Windows: `venv\Scripts\activate.bat`
+   - macOS/Linux: `source venv/bin/activate`
+
+3. Install the project:
+   ```bash
    pip install -e .
-Run the application:
-bash
+   ```
+
+4. Run the application:
+   ```bash
    python -m sharepoint_excel_manager.main
-Configuration
+   ```
+
+## Configuration
+
 The application automatically saves and restores your settings between sessions:
 
-Automatic Settings
-Team SharePoint URL and Document Folder: Saved automatically as you type
-Window size and position: Restored when you restart the app
-User preferences: Theme, auto-connect options, etc.
-Settings Storage Locations
-Windows: %APPDATA%\SharePointExcelManager\settings.json
-macOS: ~/Library/Application Support/SharePointExcelManager/settings.json
-Linux: ~/.config/SharePointExcelManager/settings.json
-First-Time Setup
+### Automatic Settings
+- **Team SharePoint URL** and **Document Folder**: Saved automatically as you type
+- **Window size and position**: Restored when you restart the app
+- **User preferences**: Theme, auto-connect options, etc.
+
+### Settings Storage Locations
+- **Windows**: `%APPDATA%\SharePointExcelManager\settings.json`
+- **macOS**: `~/Library/Application Support/SharePointExcelManager/settings.json`
+- **Linux**: `~/.config/SharePointExcelManager/settings.json`
+
+## Authentication
+
+The application uses modern Microsoft Graph API authentication, which is compatible with most corporate security policies including Conditional Access.
+
+### Authentication Methods
+
+1. **Interactive Authentication** (Default)
+   - Click "Test Connection" to authenticate via browser
+   - Best for personal accounts and less restrictive environments
+
+2. **Device Code Authentication** (Alternative)
+   - Click "Device Auth" for environments with strict security policies
+   - Displays a code to enter on another device or browser
+   - Better compatibility with Conditional Access policies
+
+### First-Time Setup
 On first run, configure:
 
-Team SharePoint URL: The URL of your Teams SharePoint site
-Format: https://yourorganization.sharepoint.com/sites/yourteam
-Document Folder Path: The path to the document folder (optional)
-Leave empty for the default "Shared Documents" folder
-Format: /sites/yourteam/Shared Documents/YourFolder
-Authentication: You'll be prompted for your Microsoft 365 credentials
-Settings Management
-Click the Settings button to view current configuration
-Use Save Config to manually save settings (though auto-save is enabled)
-Settings are automatically exported/imported when needed
-Project Structure
+1. **Team SharePoint URL**: The URL of your Teams SharePoint site
+   - Format: `https://yourorganization.sharepoint.com/sites/yourteam`
+   
+2. **Document Folder Path**: The path to the document folder (optional)
+   - Leave empty for the default "Shared Documents" folder
+   - Format: `/sites/yourteam/Shared Documents/YourFolder`
+
+3. **Authentication**: Choose your preferred authentication method
+   - Try "Test Connection" first
+   - Use "Device Auth" if you encounter Conditional Access errors
+
+### Corporate Environments
+
+If you encounter authentication errors like `AADSTS53003`, see our [Authentication Troubleshooting Guide](docs/authentication_troubleshooting.md) for detailed solutions.
+
+### Settings Management
+- Click the **Settings** button to view current configuration
+- Use **Save Config** to manually save settings (though auto-save is enabled)
+- Settings are automatically exported/imported when needed
+
+## Project Structure
+
+```
 sharepoint-excel-manager/
 ├── src/
 │   └── sharepoint_excel_manager/
@@ -96,30 +154,45 @@ sharepoint-excel-manager/
 ├── pyproject.toml              # Project configuration
 ├── requirements.txt            # Python dependencies
 └── README.md                   # This file
-Development
-Setting up Development Environment
-Install development dependencies:
-bash
+```
+
+## Development
+
+### Setting up Development Environment
+
+1. Install development dependencies:
+   ```bash
    pip install -e ".[dev]"
-Run tests:
-bash
+   ```
+
+2. Run tests:
+   ```bash
    pytest
-Format code:
-bash
+   ```
+
+3. Format code:
+   ```bash
    black src/
-Lint code:
-bash
+   ```
+
+4. Lint code:
+   ```bash
    flake8 src/
-Adding Features
+   ```
+
+### Adding Features
+
 The application is structured with clear separation of concerns:
 
-gui.py: Handle all UI components and user interactions
-sharepoint_client.py: Manage SharePoint API calls and authentication
-main.py: Application entry point and initialization
-Building for Distribution
+- `gui.py`: Handle all UI components and user interactions
+- `sharepoint_client.py`: Manage SharePoint API calls and authentication
+- `main.py`: Application entry point and initialization
+
+### Building for Distribution
+
 To create standalone executables:
 
-bash
+```bash
 # Install briefcase for packaging
 pip install briefcase
 
@@ -127,73 +200,90 @@ pip install briefcase
 briefcase create
 briefcase build
 briefcase package
-Troubleshooting
-Common Issues
-Authentication Failed
+```
 
-Ensure you're using your full Microsoft 365 email address
-Check if your organization requires multi-factor authentication
-Verify your SharePoint site URL is correct
-Connection Timeout
+## Troubleshooting
 
-Check your internet connection
-Verify the SharePoint site is accessible via browser
-Some corporate networks may block certain connections
-Python Version Issues
+### Common Issues
 
-Ensure Python 3.8 or higher is installed
-Check that python command points to correct version
-On some systems, use python3 instead of python
-Module Not Found Errors
+**Authentication Failed**
+- Ensure you're using your full Microsoft 365 email address
+- Check if your organization requires multi-factor authentication
+- Verify your SharePoint site URL is correct
 
-Make sure you've activated the virtual environment
-Re-run the installation script if dependencies are missing
-Getting Help
-Check the Issues section for known problems
-Create a new issue with:
-Your operating system
-Python version
-Complete error message
-Steps to reproduce
-Security Considerations
-Credentials are not stored permanently
-Configuration files contain only URLs and folder paths
-All SharePoint communications use HTTPS
-Consider using Azure AD app registration for production deployments
-Contributing
-Fork the repository
-Create a feature branch: git checkout -b feature-name
-Make your changes and add tests
-Run the test suite: pytest
-Format your code: black src/
-Commit your changes: git commit -am 'Add feature'
-Push to the branch: git push origin feature-name
-Create a Pull Request
-Dependencies
-Core Dependencies
-Toga: Cross-platform GUI framework
-Office365-REST-Python-Client: SharePoint API client
-openpyxl: Excel file manipulation
-requests: HTTP requests
-msal: Microsoft Authentication Library
-Development Dependencies
-pytest: Testing framework
-black: Code formatter
-flake8: Code linter
-mypy: Type checker
-License
-This project is licensed under the MIT License - see the LICENSE file for details.
+**Connection Timeout**
+- Check your internet connection
+- Verify the SharePoint site is accessible via browser
+- Some corporate networks may block certain connections
 
-Changelog
-Version 1.0.0
-Initial release
-Basic SharePoint connection and file browsing
-Cross-platform GUI with Toga
-Windows and macOS installation scripts
-Roadmap
- Excel file editing capabilities
- Batch file operations
- Advanced filtering and search
- Integration with other Office 365 services
- Enhanced error handling and logging
- Automated testing on CI/CD platforms
+**Python Version Issues**
+- Ensure Python 3.8 or higher is installed
+- Check that `python` command points to correct version
+- On some systems, use `python3` instead of `python`
+
+**Module Not Found Errors**
+- Make sure you've activated the virtual environment
+- Re-run the installation script if dependencies are missing
+
+### Getting Help
+
+1. Check the [Issues](../../issues) section for known problems
+2. Create a new issue with:
+   - Your operating system
+   - Python version
+   - Complete error message
+   - Steps to reproduce
+
+## Security Considerations
+
+- Credentials are not stored permanently
+- Configuration files contain only URLs and folder paths
+- All SharePoint communications use HTTPS
+- Consider using Azure AD app registration for production deployments
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes and add tests
+4. Run the test suite: `pytest`
+5. Format your code: `black src/`
+6. Commit your changes: `git commit -am 'Add feature'`
+7. Push to the branch: `git push origin feature-name`
+8. Create a Pull Request
+
+## Dependencies
+
+### Core Dependencies
+- **Toga**: Cross-platform GUI framework
+- **Office365-REST-Python-Client**: SharePoint API client
+- **openpyxl**: Excel file manipulation
+- **requests**: HTTP requests
+- **msal**: Microsoft Authentication Library
+
+### Development Dependencies
+- **pytest**: Testing framework
+- **black**: Code formatter
+- **flake8**: Code linter
+- **mypy**: Type checker
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Changelog
+
+### Version 1.0.0
+- Initial release
+- Basic SharePoint connection and file browsing
+- Cross-platform GUI with Toga
+- Windows and macOS installation scripts
+
+## Roadmap
+
+- [ ] Excel file editing capabilities
+- [ ] Batch file operations
+- [ ] Advanced filtering and search
+- [ ] Integration with other Office 365 services
+- [ ] Enhanced error handling and logging
+- [ ] Automated testing on CI/CD platforms
