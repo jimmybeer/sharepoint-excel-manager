@@ -37,59 +37,59 @@ class SharePointExcelApp(toga.App):
         self.settings_manager = SettingsManager()
         
         # Main container
-        main_box = toga.Box(style=Pack(direction=COLUMN, padding=20))
+        main_box = toga.Box(style=Pack(direction=COLUMN, margin=20))
         
         # Title
         title = toga.Label(
             "SharePoint Excel Manager",
-            style=Pack(padding=(0, 0, 20, 0), text_align="center", font_size=18, font_weight="bold")
+            style=Pack(margin=(0, 0, 20, 0), text_align="center", font_size=18, font_weight="bold")
         )
         
         # Team URL input
-        url_label = toga.Label("Team SharePoint URL:", style=Pack(padding=(0, 0, 5, 0)))
+        url_label = toga.Label("Team SharePoint URL:", style=Pack(margin=(0, 0, 5, 0)))
         self.url_input = toga.TextInput(
             value=self.settings_manager.get("team_url", ""),
-            style=Pack(width=400, padding=(0, 0, 10, 0)),
+            style=Pack(width=400, margin=(0, 0, 10, 0)),
             on_change=self.on_url_change
         )
         
         # Document folder input
-        folder_label = toga.Label("Document Folder Path:", style=Pack(padding=(0, 0, 5, 0)))
+        folder_label = toga.Label("Document Folder Path:", style=Pack(margin=(0, 0, 5, 0)))
         self.folder_input = toga.TextInput(
             value=self.settings_manager.get("document_folder", ""),
-            style=Pack(width=400, padding=(0, 0, 10, 0)),
+            style=Pack(width=400, margin=(0, 0, 10, 0)),
             on_change=self.on_folder_change
         )
         
         # Buttons container
-        button_box = toga.Box(style=Pack(direction=ROW, padding=(20, 0, 0, 0)))
+        button_box = toga.Box(style=Pack(direction=ROW, margin=(20, 0, 0, 0)))
         
         # Test connection button
         test_button = toga.Button(
             "Test Connection",
             on_press=self.test_connection,
-            style=Pack(padding=(0, 10, 0, 0), width=120)
+            style=Pack(margin=(0, 10, 0, 0), width=120)
         )
         
         # Save config button
         save_button = toga.Button(
             "Save Config",
             on_press=self.save_config,
-            style=Pack(padding=(0, 10, 0, 0), width=120)
+            style=Pack(margin=(0, 10, 0, 0), width=120)
         )
         
         # Browse files button
         browse_button = toga.Button(
             "Browse Files",
             on_press=self.browse_files,
-            style=Pack(padding=(0, 10, 0, 0), width=120)
+            style=Pack(margin=(0, 10, 0, 0), width=120)
         )
         
         # Settings button
         settings_button = toga.Button(
             "Settings",
             on_press=self.show_settings,
-            style=Pack(padding=(0, 10, 0, 0), width=120)
+            style=Pack(margin=(0, 10, 0, 0), width=120)
         )
         
         # Device auth button (alternative for strict environments)
@@ -97,34 +97,34 @@ class SharePointExcelApp(toga.App):
         device_auth_button = toga.Button(
             "Device Auth (if needed)",
             on_press=self.device_auth_connection,
-            style=Pack(padding=(0, 10, 0, 0), width=140)
+            style=Pack(margin=(0, 10, 0, 0), width=140)
         )
         
         # Clear console button
         clear_button = toga.Button(
             "Clear Console",
             on_press=self.clear_console,
-            style=Pack(padding=(0, 10, 0, 0), width=120)
+            style=Pack(margin=(0, 10, 0, 0), width=120)
         )
         
         # Status label
         self.status_label = toga.Label(
             "Ready",
-            style=Pack(padding=(20, 0, 0, 0), color="green")
+            style=Pack(margin=(20, 0, 0, 0), color="green")
         )
         
         # Files text area
-        files_label = toga.Label("Excel Files:", style=Pack(padding=(20, 0, 5, 0)))
+        files_label = toga.Label("Excel Files:", style=Pack(margin=(20, 0, 5, 0)))
         self.files_text = toga.MultilineTextInput(
             readonly=True,
-            style=Pack(height=150, padding=(0, 0, 10, 0))
+            style=Pack(height=150, margin=(0, 0, 10, 0))
         )
         
         # Console text area
-        console_label = toga.Label("Console Output:", style=Pack(padding=(0, 0, 5, 0)))
+        console_label = toga.Label("Console Output:", style=Pack(margin=(0, 0, 5, 0)))
         self.console_text = toga.MultilineTextInput(
             readonly=False,  # Allow editing so URLs can be clicked/selected
-            style=Pack(height=150, padding=(0, 0, 0, 0))
+            style=Pack(height=150, margin=(0, 0, 0, 0))
         )
         
         # Add components to containers
