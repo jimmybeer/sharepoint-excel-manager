@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import os
+import threading
 import urllib.parse
 import webbrowser
 from pathlib import Path
@@ -23,8 +24,9 @@ class SharePointClient:
         self.authenticated = False
         self.site_url = None
         
-        # MSAL configuration for SharePoint
-        self.client_id = "d3590ed6-52b3-4102-aeff-aad2292ab01c"  # Office 365 Management Shell
+        # MSAL configuration for SharePoint - using Microsoft Graph Command Line Tools
+        # This client ID supports both device flow and interactive authentication
+        self.client_id = "14d82eec-204b-4c2f-b7e8-296a70dab67e"  # Microsoft Graph Command Line Tools
         self.authority = "https://login.microsoftonline.com/common"
         self.scope = ["https://graph.microsoft.com/.default"]
         
@@ -75,7 +77,7 @@ class SharePointClient:
             return False
     
     async def authenticate_device_code(self, site_url: str) -> bool:
-        """Alternative authentication using device code flow (for headless environments)"""
+        """Alternative authentication using device code flow"""
         try:
             self.site_url = site_url
             
@@ -85,16 +87,31 @@ class SharePointClient:
             if "user_code" not in flow:
                 raise Exception("Failed to create device flow")
             
+            # Extract URL and code from the flow
+            verification_uri = flow.get("verification_uri", "")
+            user_code = flow.get("user_code", "")
+            
             print("\n" + "="*60)
             print("DEVICE CODE AUTHENTICATION")
             print("="*60)
-            print(flow["message"])
+            print(f"1. Go to: {verification_uri}")
+            print(f"2. Enter code: {user_code}")
             print("="*60)
-            print("Please complete the authentication in your browser.")
-            print("This window will wait for you to complete the process...")
+            print("Opening browser automatically...")
             print("="*60 + "\n")
             
-            # Complete the device code flow
+            # Open browser automatically (non-blocking)
+            if verification_uri:
+                def open_browser():
+                    try:
+                        webbrowser.open(verification_uri)
+                        print(f"Browser opened to: {verification_uri}")
+                    except Exception as e:
+                        print(f"Could not open browser: {e}")
+                
+                threading.Thread(target=open_browser, daemon=True).start()
+            
+            # Complete the device code flow (this will block, but that's expected)
             result = self.app.acquire_token_by_device_flow(flow)
             
             if result and "access_token" in result:
