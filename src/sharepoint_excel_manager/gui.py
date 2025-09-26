@@ -285,7 +285,7 @@ Theme: {settings.theme}
 Settings are automatically saved when changed.
 Configuration file location: {self.settings_manager._config_file}"""
         
-        await self.main_window.info_dialog("Settings", info_text)
+        await self.main_window.dialog(toga.InfoDialog("Settings", info_text))
     
     async def device_auth_connection(self, widget):
         """Test connection using device code authentication (for strict environments)"""
@@ -325,7 +325,7 @@ When you click OK:
 The application will wait for you to complete the process.
 This may take a few moments after you authenticate."""
             
-            await self.main_window.info_dialog("Device Code Authentication", dialog_message)
+            await self.main_window.dialog(toga.InfoDialog("Device Code Authentication", dialog_message))
             
             # Copy code to clipboard
             if self.copy_to_clipboard(user_code):
