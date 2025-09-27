@@ -1,6 +1,7 @@
 """
 GUI implementation using Toga for SharePoint Excel Manager
 """
+import asyncio
 import sys
 import threading
 import webbrowser
@@ -575,35 +576,133 @@ This may take a few moments after you authenticate."""
             return date_str[:16] if len(date_str) > 16 else date_str
     
     async def show_excel_selection_dialog(self, excel_files):
-        """Show selection dialog for Excel files"""
+        """Show selection dialog for Excel files with proper list and buttons"""
         try:
-            # Create a selection dialog using Toga's built-in selection
-            file_names = [f["name"] for f in excel_files]
+            # Create a new window for file selection
+            selection_window = toga.Window(title="Select Excel File to Update")
+            selection_window.size = (300, 400)
             
-            # For now, use a simple approach with numbered list in console
-            # and ask user to use a selection method you'll implement
-            self.print_to_console(f"\nFound {len(excel_files)} Excel files:")
-            for i, file_info in enumerate(excel_files, 1):
-                self.print_to_console(f"{i}. {file_info['name']}")
+            # Main container
+            main_box = toga.Box(style=Pack(direction=COLUMN, margin=10))
             
-            # Show info dialog for now - in a full implementation you'd create a proper selection dialog
-            dialog_message = f"Found {len(excel_files)} Excel files:\n\n"
-            for i, file_info in enumerate(excel_files[:5], 1):  # Show first 5
-                dialog_message += f"{i}. {file_info['name']}\n"
+            # Title
+            title_label = toga.Label(
+                f"Select Excel file to update:",
+                style=Pack(margin=(0, 0, 10, 0), font_weight="bold", text_align="center")
+            )
             
-            if len(excel_files) > 5:
-                dialog_message += f"... and {len(excel_files) - 5} more\n"
+            count_label = toga.Label(
+                f"({len(excel_files)} files found)",
+                style=Pack(margin=(0, 0, 15, 0), text_align="center")
+            )
+            
+            # Create file list using DetailedList
+            self.file_list_selection = toga.DetailedList(
+                style=Pack(height=250, margin=(0, 0, 15, 0))
+            )
+            
+            # Populate the list with Excel files
+            for i, file_info in enumerate(excel_files):
+                modified_date = self.format_date(file_info.get('modified', 'Unknown'))
+                size = self.format_file_size(file_info.get('size', 0))
                 
-            dialog_message += "\nWould you like to select one for updating?"
+                self.file_list_selection.data.append({
+                    "title": file_info['name'],
+                    "subtitle": f"{size} - {modified_date}",
+                    "icon": None
+                })
             
-            # For now, just show info - you could implement a proper selection dialog here
-            await self.main_window.dialog(toga.InfoDialog("Excel Files Found", dialog_message))
+            # Buttons container
+            button_box = toga.Box(style=Pack(direction=ROW, margin=(5, 0, 0, 0)))
             
-            # TODO: Implement proper selection dialog with list and buttons
-            # This would require creating a custom dialog or using Toga's selection widgets
+            # Cancel button
+            cancel_button = toga.Button(
+                "Cancel",
+                on_press=lambda widget: self.close_selection_dialog(selection_window, None),
+                style=Pack(margin=(0, 5, 0, 0), width=100)
+            )
+            
+            # Update button (initially disabled)
+            self.update_button = toga.Button(
+                "Update",
+                on_press=lambda widget: self.close_selection_dialog(selection_window, excel_files),
+                style=Pack(margin=(0, 0, 0, 0), width=100)
+            )
+            
+            # Initially disable update button
+            self.update_button.enabled = False
+            
+            # Add selection change handler to enable/disable update button
+            self.file_list_selection.on_select = self.on_file_list_selection_change
+            
+            # Add components
+            button_box.add(cancel_button)
+            button_box.add(self.update_button)
+            
+            main_box.add(title_label)
+            main_box.add(count_label)
+            main_box.add(self.file_list_selection)
+            main_box.add(button_box)
+            
+            # Set content and show
+            selection_window.content = main_box
+            selection_window.show()
+            
+            # Store reference for later use
+            self.selection_window = selection_window
+            self.selected_excel_files = excel_files
             
         except Exception as e:
-            self.print_to_console(f"Error showing selection dialog: {e}")
+            self.print_to_console(f"Error creating selection dialog: {e}")
+            # Fallback to simple console-based selection
+            await self.show_simple_excel_selection(excel_files)
+    
+    def on_file_list_selection_change(self, widget):
+        """Handle file list selection change to enable/disable update button"""
+        try:
+            # Enable update button when a file is selected
+            if self.file_list_selection.selection is not None:
+                self.update_button.enabled = True
+            else:
+                self.update_button.enabled = False
+        except Exception as e:
+            self.print_to_console(f"Error handling selection change: {e}")
+    
+    def close_selection_dialog(self, window, excel_files):
+        """Close the selection dialog and handle the result"""
+        try:
+            if excel_files is None:
+                # Cancel was pressed
+                self.print_to_console("File selection cancelled")
+                window.close()
+                return
+            
+            # Get selected file
+            if hasattr(self, 'file_list_selection') and self.file_list_selection.selection is not None:
+                selected_index = self.file_list_selection.selection
+                selected_file = excel_files[selected_index]
+                
+                # Close window first
+                window.close()
+                
+                # Process the selection
+                asyncio.create_task(self.update_selected_excel_file(selected_file))
+            else:
+                self.print_to_console("No file selected")
+                window.close()
+                
+        except Exception as e:
+            self.print_to_console(f"Error processing file selection: {e}")
+            window.close()
+    
+    async def show_simple_excel_selection(self, excel_files):
+        """Fallback simple selection method if custom dialog fails"""
+        self.print_to_console(f"\nFound {len(excel_files)} Excel files:")
+        for i, file_info in enumerate(excel_files, 1):
+            self.print_to_console(f"{i}. {file_info['name']}")
+        
+        dialog_message = f"Found {len(excel_files)} Excel files. Please check the console output for the list."
+        await self.main_window.dialog(toga.InfoDialog("Excel Files Found", dialog_message))
     
     async def update_selected_excel_file(self, selected_file):
         """Placeholder function for updating selected Excel file"""
