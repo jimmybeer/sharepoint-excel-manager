@@ -182,6 +182,19 @@ class SharePointClient:
     
     async def get_excel_files(self, team_url: str, folder_path: str = "") -> List[Dict]:
         """Get list of Excel files from SharePoint folder using Microsoft Graph"""
+        all_files = await self.get_all_files(team_url, folder_path)
+        
+        # Filter for Excel files
+        excel_files = []
+        for item in all_files:
+            if item.get("name", "").lower().endswith(('.xlsx', '.xlsm', '.xls')):
+                excel_files.append(item)
+        
+        logger.info(f"Found {len(excel_files)} Excel files")
+        return excel_files
+    
+    async def get_all_files(self, team_url: str, folder_path: str = "") -> List[Dict]:
+        """Get list of all files and folders from SharePoint folder using Microsoft Graph"""
         try:
             if not self.authenticated:
                 success = await self.authenticate(team_url)
@@ -214,22 +227,33 @@ class SharePointClient:
                 raise Exception(f"Failed to retrieve files: {response.status_code}")
             
             files_data = response.json()
-            excel_files = []
+            all_items = []
             
-            # Filter for Excel files
+            # Process all items (files and folders)
             for item in files_data.get("value", []):
-                if item.get("file") and item.get("name", "").lower().endswith(('.xlsx', '.xlsm', '.xls')):
-                    excel_files.append({
+                if item.get("file"):  # It's a file
+                    all_items.append({
                         "name": item["name"],
+                        "type": "file",
                         "url": item["webUrl"],
                         "download_url": item.get("@microsoft.graph.downloadUrl", ""),
                         "modified": item.get("lastModifiedDateTime", "Unknown"),
                         "size": item.get("size", 0),
                         "id": item["id"]
                     })
+                elif item.get("folder"):  # It's a folder
+                    all_items.append({
+                        "name": item["name"],
+                        "type": "folder",
+                        "url": item["webUrl"],
+                        "download_url": "",
+                        "modified": item.get("lastModifiedDateTime", "Unknown"),
+                        "size": item.get("folder", {}).get("childCount", 0),  # Use child count for folders
+                        "id": item["id"]
+                    })
             
-            logger.info(f"Found {len(excel_files)} Excel files")
-            return excel_files
+            logger.info(f"Found {len(all_items)} items")
+            return all_items
             
         except Exception as e:
             logger.error(f"Error getting files: {e}")

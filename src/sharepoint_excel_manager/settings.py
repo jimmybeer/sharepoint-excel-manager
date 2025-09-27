@@ -116,6 +116,9 @@ class SettingsManager:
             # Create backup of existing file
             if self._config_file.exists():
                 backup_file = self._config_file.with_suffix('.json.backup')
+                # Remove existing backup if it exists
+                if backup_file.exists():
+                    backup_file.unlink()
                 self._config_file.rename(backup_file)
             
             # Write new settings

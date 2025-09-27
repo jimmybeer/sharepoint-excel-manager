@@ -25,9 +25,23 @@ class SharePointExcelApp(toga.App):
         )
     
     def print_to_console(self, message):
-        """Add message to console text area"""
+        """Add message to console text area and auto-scroll to bottom"""
         current_text = self.console_text.value
         self.console_text.value = current_text + message + "\n"
+        
+        # Auto-scroll to bottom
+        try:
+            # Try to scroll to the end of the text
+            # This may not work on all platforms/versions of Toga
+            if hasattr(self.console_text, 'scroll_to_bottom'):
+                self.console_text.scroll_to_bottom()
+            elif hasattr(self.console_text, 'set_cursor_position'):
+                # Alternative: move cursor to end which may trigger scroll
+                text_length = len(self.console_text.value)
+                self.console_text.set_cursor_position(text_length)
+        except Exception:
+            # If scrolling fails, just continue without it
+            pass
     
     def startup(self):
         """Initialize the application"""
@@ -114,7 +128,7 @@ class SharePointExcelApp(toga.App):
         )
         
         # Files text area
-        files_label = toga.Label("Excel Files:", style=Pack(margin=(20, 0, 5, 0)))
+        files_label = toga.Label("Files:", style=Pack(margin=(20, 0, 5, 0)))
         self.files_text = toga.MultilineTextInput(
             readonly=True,
             style=Pack(height=150, margin=(0, 0, 10, 0))
@@ -468,7 +482,7 @@ This may take a few moments after you authenticate."""
             self.status_label.style.color = "red"
     
     async def browse_files(self, widget):
-        """Browse Excel files in SharePoint"""
+        """Browse files in SharePoint"""
         team_url = self.url_input.value.strip()
         folder_path = self.folder_input.value.strip()
         
@@ -479,27 +493,124 @@ This may take a few moments after you authenticate."""
         
         self.status_label.text = "Loading files..."
         self.status_label.style.color = "orange"
-        self.print_to_console("Loading Excel files...")
+        self.print_to_console("Loading files...")
         
         try:
-            files = await self.sharepoint_client.get_excel_files(team_url, folder_path)
+            # Clear the files text area first
+            self.files_text.value = ""
             
-            # Update files display
-            if files:
-                file_text = f"Found {len(files)} Excel files:\n\n"
-                for i, file_info in enumerate(files, 1):
-                    file_text += f"{i}. {file_info['name']}\n"
-                    file_text += f"   Modified: {file_info.get('modified', 'Unknown')}\n"
-                    file_text += f"   Size: {file_info.get('size', 0)} bytes\n\n"
-                self.files_text.value = file_text
-            else:
-                self.files_text.value = "No Excel files found"
+            # Get all files and folders
+            files = await self.sharepoint_client.get_all_files(team_url, folder_path)
             
-            self.status_label.text = f"Found {len(files)} Excel files"
+            if not files:
+                self.files_text.value = "No items found"
+                self.status_label.text = "No items found"
+                self.status_label.style.color = "orange"
+                self.print_to_console("No items found")
+                return
+            
+            # Format files as a table
+            header = f"{'Name':<40} {'Type':<10} {'Size':<12} {'Modified':<20}\n"
+            header += "-" * 82 + "\n"
+            file_text = header
+            
+            excel_files = []
+            folder_count = 0
+            file_count = 0
+            
+            for file_info in files:
+                name = file_info['name'][:37] + "..." if len(file_info['name']) > 40 else file_info['name']
+                
+                if file_info['type'] == 'folder':
+                    file_type = "Folder"
+                    size = f"{file_info.get('size', 0)} items"
+                    folder_count += 1
+                else:
+                    file_count += 1
+                    if file_info['name'].lower().endswith(('.xlsx', '.xlsm', '.xls')):
+                        file_type = "Excel"
+                        excel_files.append(file_info)
+                    else:
+                        file_type = "File"
+                    size = self.format_file_size(file_info.get('size', 0))
+                
+                modified = self.format_date(file_info.get('modified', 'Unknown'))
+                
+                file_text += f"{name:<40} {file_type:<10} {size:<12} {modified:<20}\n"
+            
+            self.files_text.value = file_text
+            self.status_label.text = f"Found {folder_count} folders, {file_count} files ({len(excel_files)} Excel)"
             self.status_label.style.color = "green"
-            self.print_to_console(f"Found {len(files)} Excel files")
+            self.print_to_console(f"Found {folder_count} folders, {file_count} files ({len(excel_files)} Excel)")
+            
+            # Show Excel file selection dialog if any Excel files found
+            if excel_files:
+                await self.show_excel_selection_dialog(excel_files)
             
         except Exception as e:
             self.status_label.text = f"Error browsing files: {str(e)}"
             self.status_label.style.color = "red"
             self.print_to_console(f"Error browsing files: {str(e)}")
+    
+    def format_file_size(self, size_bytes):
+        """Format file size in human readable format"""
+        if size_bytes == 0:
+            return "0 B"
+        elif size_bytes < 1024:
+            return f"{size_bytes} B"
+        elif size_bytes < 1024 * 1024:
+            return f"{size_bytes // 1024} KB"
+        else:
+            return f"{size_bytes // (1024 * 1024)} MB"
+    
+    def format_date(self, date_str):
+        """Format date string to readable format"""
+        if date_str == 'Unknown':
+            return date_str
+        try:
+            from datetime import datetime
+            dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            return dt.strftime('%Y-%m-%d %H:%M')
+        except:
+            return date_str[:16] if len(date_str) > 16 else date_str
+    
+    async def show_excel_selection_dialog(self, excel_files):
+        """Show selection dialog for Excel files"""
+        try:
+            # Create a selection dialog using Toga's built-in selection
+            file_names = [f["name"] for f in excel_files]
+            
+            # For now, use a simple approach with numbered list in console
+            # and ask user to use a selection method you'll implement
+            self.print_to_console(f"\nFound {len(excel_files)} Excel files:")
+            for i, file_info in enumerate(excel_files, 1):
+                self.print_to_console(f"{i}. {file_info['name']}")
+            
+            # Show info dialog for now - in a full implementation you'd create a proper selection dialog
+            dialog_message = f"Found {len(excel_files)} Excel files:\n\n"
+            for i, file_info in enumerate(excel_files[:5], 1):  # Show first 5
+                dialog_message += f"{i}. {file_info['name']}\n"
+            
+            if len(excel_files) > 5:
+                dialog_message += f"... and {len(excel_files) - 5} more\n"
+                
+            dialog_message += "\nWould you like to select one for updating?"
+            
+            # For now, just show info - you could implement a proper selection dialog here
+            await self.main_window.dialog(toga.InfoDialog("Excel Files Found", dialog_message))
+            
+            # TODO: Implement proper selection dialog with list and buttons
+            # This would require creating a custom dialog or using Toga's selection widgets
+            
+        except Exception as e:
+            self.print_to_console(f"Error showing selection dialog: {e}")
+    
+    async def update_selected_excel_file(self, selected_file):
+        """Placeholder function for updating selected Excel file"""
+        self.print_to_console(f"DEBUG: update_selected_excel_file called with file: {selected_file['name']}")
+        self.print_to_console(f"DEBUG: File URL: {selected_file.get('url', 'N/A')}")
+        self.print_to_console(f"DEBUG: File ID: {selected_file.get('id', 'N/A')}")
+        self.print_to_console("DEBUG: This is where the Excel file update logic would go")
+        
+        self.status_label.text = f"Ready to update: {selected_file['name']}"
+        self.status_label.style.color = "blue"
