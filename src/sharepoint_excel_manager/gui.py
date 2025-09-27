@@ -9,6 +9,7 @@ import webbrowser
 import toga
 from toga.style.pack import COLUMN, ROW, Pack
 
+from .excel_manager import ExcelManager
 from .settings import SettingsManager
 from .sharepoint_client import SharePointClient
 
@@ -582,6 +583,20 @@ This may take a few moments after you authenticate."""
             selection_window = toga.Window(title="Select Excel File to Update")
             selection_window.size = (300, 400)
             
+            # Center the dialog relative to main window
+            try:
+                main_pos = self.main_window.position
+                main_size = self.main_window.size
+                
+                # Calculate center position
+                center_x = main_pos[0] + (main_size[0] - 300) // 2
+                center_y = main_pos[1] + (main_size[1] - 400) // 2
+                
+                selection_window.position = (center_x, center_y)
+            except Exception:
+                # If centering fails, just use default position
+                pass
+            
             # Main container
             main_box = toga.Box(style=Pack(direction=COLUMN, margin=10))
             
@@ -677,16 +692,30 @@ This may take a few moments after you authenticate."""
                 window.close()
                 return
             
-            # Get selected file
+            # Get selected file - need to find the index manually since selection returns Row object
             if hasattr(self, 'file_list_selection') and self.file_list_selection.selection is not None:
-                selected_index = self.file_list_selection.selection
-                selected_file = excel_files[selected_index]
+                # Find the selected item's index in the data
+                selected_row = self.file_list_selection.selection
+                selected_index = None
                 
-                # Close window first
-                window.close()
+                # Find the index by comparing with the data
+                for i, data_item in enumerate(self.file_list_selection.data):
+                    if (data_item.title == selected_row.title and 
+                        data_item.subtitle == selected_row.subtitle):
+                        selected_index = i
+                        break
                 
-                # Process the selection
-                asyncio.create_task(self.update_selected_excel_file(selected_file))
+                if selected_index is not None:
+                    selected_file = excel_files[selected_index]
+                    
+                    # Close window first
+                    window.close()
+                    
+                    # Process the selection
+                    asyncio.create_task(self.update_selected_excel_file(selected_file))
+                else:
+                    self.print_to_console("Could not determine selected file")
+                    window.close()
             else:
                 self.print_to_console("No file selected")
                 window.close()
@@ -705,11 +734,60 @@ This may take a few moments after you authenticate."""
         await self.main_window.dialog(toga.InfoDialog("Excel Files Found", dialog_message))
     
     async def update_selected_excel_file(self, selected_file):
-        """Placeholder function for updating selected Excel file"""
-        self.print_to_console(f"DEBUG: update_selected_excel_file called with file: {selected_file['name']}")
-        self.print_to_console(f"DEBUG: File URL: {selected_file.get('url', 'N/A')}")
-        self.print_to_console(f"DEBUG: File ID: {selected_file.get('id', 'N/A')}")
-        self.print_to_console("DEBUG: This is where the Excel file update logic would go")
+        """Process selected Excel file - download, open, and extract tables"""
+        self.print_to_console(f"Processing Excel file: {selected_file['name']}")
+        self.status_label.text = f"Processing: {selected_file['name']}"
+        self.status_label.style.color = "orange"
         
-        self.status_label.text = f"Ready to update: {selected_file['name']}"
-        self.status_label.style.color = "blue"
+        try:
+            # Use Excel manager with context manager for automatic cleanup
+            with ExcelManager(self.sharepoint_client) as excel_manager:
+                # Download and open the file
+                self.print_to_console("Downloading and opening Excel file...")
+                success = await excel_manager.download_and_open_excel_file(selected_file)
+                
+                if not success:
+                    self.print_to_console("Failed to download or open Excel file")
+                    self.status_label.text = "Error: Failed to open Excel file"
+                    self.status_label.style.color = "red"
+                    return
+                
+                self.print_to_console("Excel file opened successfully")
+                
+                # Extract available tables
+                self.print_to_console("Extracting available tables and worksheets...")
+                tables = excel_manager.get_available_tables()
+                
+                if not tables:
+                    self.print_to_console("No tables or data found in Excel file")
+                    self.status_label.text = "No tables found in Excel file"
+                    self.status_label.style.color = "orange"
+                    return
+                
+                # Display table information
+                self.print_to_console(f"\nFound {len(tables)} tables/worksheets:")
+                self.print_to_console("-" * 50)
+                
+                for i, table in enumerate(tables, 1):
+                    self.print_to_console(f"{i}. {table['description']}")
+                    if table['sample_headers']:
+                        headers = ", ".join(table['sample_headers'])
+                        self.print_to_console(f"   Sample columns: {headers}")
+                    self.print_to_console("")
+                
+                self.status_label.text = f"Found {len(tables)} tables in {selected_file['name']}"
+                self.status_label.style.color = "green"
+                
+                # TODO: Here you could add functionality to:
+                # 1. Let user select which table to update
+                # 2. Show table preview
+                # 3. Update table data
+                # 4. Save changes back to SharePoint
+                
+                self.print_to_console("Table extraction completed. Ready for next steps.")
+                
+        except Exception as e:
+            error_msg = str(e)
+            self.print_to_console(f"Error processing Excel file: {error_msg}")
+            self.status_label.text = f"Error: {error_msg[:50]}..."
+            self.status_label.style.color = "red"
